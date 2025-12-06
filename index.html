@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>森森天氣</title>
+    <title>粉色小桃</title>
     <link rel="icon" type="image/png" href="./icon-v2.png">
     <link rel="apple-touch-icon" href="./icon-v2.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./icon-v2.png">
@@ -15,14 +15,14 @@
 
     <style>
         :root {
-            --ac-green: #7DE1A9;
-            --ac-bg-pattern: #8FD8AF;
-            --ac-cream: #FFFEF2;
-            --ac-yellow: #F9F195;
-            --ac-brown: #796452;
-            --ac-blue: #4FB5D9;
-            --ac-dark: #58504A;
-            --ac-card-border: #E6E0C8;
+            --ac-green: #FF1493;
+            --ac-bg-pattern: #FF69B4;
+            --ac-cream: #FFF0F5;
+            --ac-yellow: #FFB6C1;
+            --ac-brown: #2D2D2D;
+            --ac-blue: #FF1493;
+            --ac-dark: #1A1A1A;
+            --ac-card-border: #FFB6C1;
         }
 
         * {
@@ -34,12 +34,12 @@
 
         body {
             font-family: 'Zen Maru Gothic', sans-serif;
-            background-color: var(--ac-green);
-            /* 更細緻的斜紋背景 */
+            background: #000000;
+            /* 黑色背景 */
             background-image:
-                repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255, 255, 255, 0.2) 20px, rgba(255, 255, 255, 0.2) 40px);
+                repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255, 20, 147, 0.05) 20px, rgba(255, 20, 147, 0.05) 40px);
             min-height: 100vh;
-            color: var(--ac-dark);
+            color: #FFB6C1;
             /* 防止 iOS 左右滑動 */
             overflow-x: hidden;
             padding-bottom: 20px;
@@ -264,7 +264,30 @@
         <p style="color: white; font-weight: bold; margin-top: 20px;">正在觀測雲的流動...</p>
     </div>
     <div class="status-bar">
-        <div class="location-pill">📍 桃園市</div>
+        <select id="citySelector" class="location-pill" style="cursor: pointer; border: none; outline: none;">
+            <option value="高雄市">📍 高雄市</option>
+            <option value="臺北市">📍 台北市</option>
+            <option value="臺中市">📍 台中市</option>
+            <option value="臺南市">📍 台南市</option>
+            <option value="桃園市" selected>📍 桃園市</option>
+            <option value="新竹市">📍 新竹市</option>
+            <option value="基隆市">📍 基隆市</option>
+            <option value="新竹縣">📍 新竹縣</option>
+            <option value="苗栗縣">📍 苗栗縣</option>
+            <option value="彰化縣">📍 彰化縣</option>
+            <option value="南投縣">📍 南投縣</option>
+            <option value="雲林縣">📍 雲林縣</option>
+            <option value="嘉義縣">📍 嘉義縣</option>
+            <option value="嘉義市">📍 嘉義市</option>
+            <option value="屏東縣">📍 屏東縣</option>
+            <option value="宜蘭縣">📍 宜蘭縣</option>
+            <option value="花蓮縣">📍 花蓮縣</option>
+            <option value="臺東縣">📍 台東縣</option>
+            <option value="澎湖縣">📍 澎湖縣</option>
+            <option value="金門縣">📍 金門縣</option>
+            <option value="連江縣">📍 連江縣</option>
+            <option value="新北市">📍 新北市</option>
+        </select>
         <div id="updateTime" class="update-pill">更新中...</div>
     </div>
 
@@ -280,7 +303,9 @@
     </div>
 
     <script>
-        const API_URL = "https://zoweather.zeabur.app/api/weather/kaohsiung";
+        let currentCity = "桃園市";
+        let allWeatherData = {}; // 儲存全台天氣資料
+        const API_URL = "https://zoweather.zeabur.app/api/weather/all";
 
         function getWeatherIcon(weather) {
             if (!weather) return "🌤️";
@@ -397,15 +422,24 @@
                 // 1. 定義「最低等待時間」：1500 毫秒 (1.5秒)
                 const delayPromise = new Promise(resolve => setTimeout(resolve, 1500));
 
-                // 2. 定義「抓取資料」的工作
+                // 2. 定義「抓取資料」的工作 - 抓取全台資料
                 const fetchPromise = fetch(API_URL).then(res => res.json());
 
                 // 3. Promise.all 會等待「兩個都完成」才會往下走
-                // result 陣列裡，第一個是 delay 的結果(沒用到)，第二個是 api 的 json 資料
                 const [_, json] = await Promise.all([delayPromise, fetchPromise]);
 
-                if (json.success) {
-                    renderWeather(json.data);
+                if (json.success && json.data.cities) {
+                    // 將 cities 陣列轉換成物件，以 city 名稱為 key
+                    json.data.cities.forEach(cityData => {
+                        allWeatherData[cityData.city] = { forecasts: cityData.forecasts };
+                    });
+                    
+                    // 顯示當前選擇的縣市
+                    if (allWeatherData[currentCity]) {
+                        renderWeather(allWeatherData[currentCity]);
+                    } else {
+                        throw new Error(`找不到 ${currentCity} 的資料`);
+                    }
 
                     // 資料處理好後，隱藏 Loading，顯示主畫面
                     document.getElementById('loading').style.display = 'none';
@@ -419,7 +453,24 @@
             }
         }
 
-        document.addEventListener("DOMContentLoaded", fetchWeather);
+        // 切換縣市（不重新抓取 API）
+        function switchCity(city) {
+            currentCity = city;
+            if (allWeatherData[city]) {
+                renderWeather(allWeatherData[city]);
+            } else {
+                alert('找不到該縣市的天氣資料');
+            }
+        }
+
+        // 監聽縣市切換
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchWeather();
+            
+            document.getElementById('citySelector').addEventListener('change', (e) => {
+                switchCity(e.target.value);
+            });
+        });
     </script>
 </body>
 
